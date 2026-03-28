@@ -44,6 +44,23 @@ class TestGoldRateScraper:
         )
 
     @patch('app.scraper.requests.get')
+    def test_fetch_gold_rates_logs_response_details(self, mock_get):
+        """Test that response metadata is logged."""
+        mock_resp = self._mock_response(_html('14903', '16110'))
+        mock_resp.encoding = 'utf-8'
+        mock_resp.headers = {'content-type': 'text/html; charset=utf-8'}
+        mock_get.return_value = mock_resp
+
+        with patch('app.scraper.logger') as mock_logger:
+            result = self.scraper.fetch_gold_rates()
+            
+            assert result is not None
+            # Verify response details were logged
+            mock_logger.info.assert_any_call(
+                'Response: status=200, encoding=utf-8, content-type=text/html; charset=utf-8'
+            )
+
+    @patch('app.scraper.requests.get')
     def test_fetch_gold_rates_with_whitespace_variations(self, mock_get):
         """Test extraction with extra spaces around KT and no separator."""
         html = (
@@ -71,9 +88,15 @@ class TestGoldRateScraper:
         )
         mock_get.return_value = self._mock_response(html)
 
-        result = self.scraper.fetch_gold_rates()
+        with patch('app.scraper.logger') as mock_logger:
+            result = self.scraper.fetch_gold_rates()
 
-        assert result is None
+            assert result is None
+            # Verify error logging includes regex patterns
+            mock_logger.error.assert_any_call(
+                "Regex patterns used: 22K='22\\s*KT\\s*Gold\\s*₹\\s*(\\d+)', "
+                "24K='24\\s*KT\\s*Gold\\s*₹\\s*(\\d+)'"
+            )
 
     @patch('app.scraper.requests.get')
     def test_fetch_gold_rates_no_data(self, mock_get):
@@ -215,3 +238,38 @@ class TestGoldRateScraper:
         assert result is not None
         assert result["22k"] == "13506"
         assert result["24k"] == "14600"
+
+    def test_log_rate_context_with_gold_keywords(self):
+        """Test _log_rate_context logs relevant lines with gold keywords."""
+        text = (
+            "Some header text\n"
+            "22 KT Gold\u20b914903 PER 1 GM\n"
+            "24 KT Gold\u20b916110 PER 1 GM\n"
+            "Footer text"
+        )
+
+        with patch('app.scraper.logger') as mock_logger:
+            self.scraper._log_rate_context(text)
+
+            # Should log count and sample lines
+            assert any(
+                'Found' in str(call) and 'gold/rate keywords' in str(call)
+                for call in mock_logger.info.call_args_list
+            )
+
+    def test_log_rate_context_without_gold_keywords(self):
+        """Test _log_rate_context when no gold keywords are found."""
+        text = "Some random page content without any precious metal pricing"
+
+        with patch('app.scraper.logger') as mock_logger:
+            self.scraper._log_rate_context(text)
+
+            # Should warn and log first 500 chars
+            mock_logger.warning.assert_any_call(
+                "No lines found containing gold rate keywords"
+            )
+            # Should also log a snippet of the page
+            assert any(
+                'First 500 chars' in str(call)
+                for call in mock_logger.warning.call_args_list
+            )

@@ -48,20 +48,32 @@ class GoldRateScraper:
                 logger.error("Access denied (403) — website may be blocking automated requests")
                 raise requests.HTTPError("403 Forbidden", response=response)
             response.raise_for_status()
+
+            logger.info(f"Response: status={response.status_code}, encoding={response.encoding}, "
+                       f"content-type={response.headers.get('content-type', 'unknown')}")
             
             soup = BeautifulSoup(response.text, 'html.parser')
 
             # Find all text containing gold rate information
             text_content = soup.get_text()
+            
+            # Log snippet around where we expect to find rates for debugging
+            self._log_rate_context(text_content)
 
             # Real page format: "22 KT Gold₹13506 PER 1 GM" (no pipe separator)
-            rate_22k = self._extract_rate(text_content, r"22\s*KT\s*Gold\s*₹\s*(\d+)")
-            rate_24k = self._extract_rate(text_content, r"24\s*KT\s*Gold\s*₹\s*(\d+)")
+            pattern_22k = r"22\s*KT\s*Gold\s*₹\s*(\d+)"
+            pattern_24k = r"24\s*KT\s*Gold\s*₹\s*(\d+)"
+            
+            rate_22k = self._extract_rate(text_content, pattern_22k)
+            rate_24k = self._extract_rate(text_content, pattern_24k)
+            
+            logger.info(f"Extraction results: 22K={rate_22k}, 24K={rate_24k}")
             
             if rate_22k and rate_24k:
                 return {"22k": rate_22k, "24k": rate_24k}
             else:
-                logger.warning("Could not extract both gold rates")
+                logger.error(f"Regex patterns used: 22K='{pattern_22k}', 24K='{pattern_24k}'")
+                logger.error("Could not extract both gold rates — check log context above")
                 return None
                 
         except requests.RequestException as e:
@@ -75,3 +87,24 @@ class GoldRateScraper:
         """Extract rate using regex pattern."""
         match = re.search(pattern, text, re.IGNORECASE)
         return match.group(1) if match else None
+
+    def _log_rate_context(self, text: str) -> None:
+        """Log text snippet around gold rate mentions for debugging."""
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        
+        # Find lines mentioning gold or KT
+        relevant_lines = [
+            line for line in lines
+            if any(keyword in line.upper() for keyword in ['GOLD', 'KT', '₹', 'RATE'])
+        ]
+        
+        if relevant_lines:
+            logger.info(f"Found {len(relevant_lines)} lines with gold/rate keywords")
+            # Log first 5 relevant lines to avoid flooding
+            for i, line in enumerate(relevant_lines[:5]):
+                # Truncate long lines
+                display_line = line if len(line) <= 200 else line[:200] + "..."
+                logger.info(f"  Line {i+1}: {repr(display_line)}")
+        else:
+            logger.warning("No lines found containing gold rate keywords")
+            logger.warning(f"First 500 chars of page text: {repr(text[:500])}")
