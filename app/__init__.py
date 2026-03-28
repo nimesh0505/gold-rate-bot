@@ -1,0 +1,1 @@
+"""Gold Rate Bot Package."""

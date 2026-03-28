@@ -1,0 +1,7 @@
+requests
+beautifulsoup4
+tenacity
+python-dotenv
+pytest
+pytest-cov
+pytest-mock
