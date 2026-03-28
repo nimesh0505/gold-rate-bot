@@ -1,7 +1,7 @@
 import pytest
 import requests
 from unittest.mock import patch, Mock
-from app.scraper import GoldRateScraper
+from app.scraper import GoldRateScraper, _is_retryable
 from bs4 import BeautifulSoup
 
 
@@ -33,7 +33,7 @@ class TestGoldRateScraper:
         assert result is not None
         assert result["22k"] == "14903"
         assert result["24k"] == "16110"
-        mock_get.assert_called_once_with(self.scraper.BASE_URL, timeout=10)
+        mock_get.assert_called_once_with(self.scraper.BASE_URL, headers=self.scraper.HEADERS, timeout=10)
     
     @patch('app.scraper.requests.get')
     def test_fetch_gold_rates_with_whitespace_variations(self, mock_get):
@@ -162,6 +162,43 @@ class TestGoldRateScraper:
         result = self.scraper._extract_rate(text, pattern)
 
         assert result == "14903"
+
+    @patch('app.scraper.requests.get')
+    def test_fetch_gold_rates_403_forbidden(self, mock_get):
+        """Test that 403 response raises HTTPError immediately without retrying."""
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_get.return_value = mock_response
+
+        with pytest.raises(requests.HTTPError, match="403 Forbidden"):
+            self.scraper.fetch_gold_rates()
+
+        # Should only be called once — no retries on 403
+        assert mock_get.call_count == 1
+
+    def test_is_retryable_returns_false_for_403(self):
+        """Test _is_retryable returns False for 403 HTTPError."""
+        mock_response = Mock()
+        mock_response.status_code = 403
+        exc = requests.HTTPError("403 Forbidden", response=mock_response)
+        assert _is_retryable(exc) is False
+
+    def test_is_retryable_returns_true_for_other_http_errors(self):
+        """Test _is_retryable returns True for non-403 HTTP errors."""
+        mock_response = Mock()
+        mock_response.status_code = 500
+        exc = requests.HTTPError("500 Server Error", response=mock_response)
+        assert _is_retryable(exc) is True
+
+    def test_is_retryable_returns_true_for_non_http_errors(self):
+        """Test _is_retryable returns True for non-HTTPError exceptions."""
+        assert _is_retryable(requests.ConnectionError("timeout")) is True
+        assert _is_retryable(ValueError("bad value")) is True
+
+    def test_is_retryable_returns_true_for_http_error_without_response(self):
+        """Test _is_retryable returns True when HTTPError has no response."""
+        exc = requests.HTTPError("error")
+        assert _is_retryable(exc) is True
 
     @patch('app.scraper.requests.get')
     def test_fetch_gold_rates_parsing_exception(self, mock_get):
