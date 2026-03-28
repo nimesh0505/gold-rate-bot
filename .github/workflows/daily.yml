@@ -2,7 +2,7 @@ name: Daily Gold Rate Bot
 
 on:
   schedule:
-    - cron: '0 4 * * *'  # Runs daily at 4:00 AM UTC
+    - cron: '0 5 * * *'  # Runs daily at 5:00 AM UTC (10:30 AM IST)
   workflow_dispatch:    # Allow manual triggering
   push:
     branches: [ main ]   # Also run on main branch pushes
