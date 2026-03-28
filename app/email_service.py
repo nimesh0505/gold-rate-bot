@@ -26,7 +26,7 @@ def _success_html(rate_22k: str, rate_24k: str, today: str) -> str:
   .date-badge{{display:inline-block;background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.4);border-radius:20px;padding:5px 16px;color:#fff;font-size:12px;font-weight:600;margin-top:12px;letter-spacing:0.5px;}}
   .body{{padding:36px 32px;}}
   .intro{{font-size:15px;color:#555;margin-bottom:28px;line-height:1.6;}}
-  .rates{{display:flex;gap:32px;margin-bottom:32px;}}
+  .rates{{display:flex;gap:48px;margin-bottom:32px;}}
   .rate-card{{flex:1;border-radius:12px;padding:24px 20px;text-align:center;border:1.5px solid #f0e0b0;background:linear-gradient(145deg,#fffdf5,#fff9e6);}}
   .rate-card .karat{{font-size:12px;font-weight:700;letter-spacing:1.5px;color:#b8860b;text-transform:uppercase;margin-bottom:8px;}}
   .rate-card .price{{font-size:28px;font-weight:700;color:#1a1a1a;}}
@@ -60,7 +60,7 @@ def _success_html(rate_22k: str, rate_24k: str, today: str) -> str:
       <div class="rate-card">
         <div class="karat">24K Gold</div>
         <div class="price"><span class="currency">&#x20B9;</span>{rate_24k}</div>
-        <div class="unit">per gram &nbsp;·&nbsp; 99.9% purity</div>
+        <div class="unit">per gram &nbsp;·&nbsp; 99.5% purity</div>
       </div>
     </div>
     <div class="divider"></div>
