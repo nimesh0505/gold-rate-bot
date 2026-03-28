@@ -31,5 +31,5 @@ def main() -> None:
         logger.error(f"Error in main process: {str(e)}")
         email_service.send_error_email(f"Error: {str(e)}")
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

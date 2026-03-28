@@ -46,19 +46,26 @@ class TestLogger:
     @patch('app.logger.logging.StreamHandler')
     def test_setup_logger_with_mock_handler(self, mock_stream_handler):
         """Test setup_logger with mocked handler."""
-        mock_handler = MagicMock()
-        mock_stream_handler.return_value = mock_handler
-        
-        logger = setup_logger()
-        
-        # Verify StreamHandler was created
-        mock_stream_handler.assert_called_once()
-        
-        # Verify handler was added to logger
-        assert mock_handler in logger.handlers
-        
-        # Verify formatter was set
-        mock_handler.setFormatter.assert_called_once()
+        import logging as _logging
+        real_logger = _logging.getLogger("gold_rate_bot")
+        original_handlers = real_logger.handlers[:]
+        real_logger.handlers.clear()
+
+        try:
+            mock_handler = MagicMock()
+            mock_handler.level = _logging.NOTSET
+            mock_stream_handler.return_value = mock_handler
+
+            logger = setup_logger()
+
+            mock_stream_handler.assert_called_once()
+            assert mock_handler in logger.handlers
+            mock_handler.setFormatter.assert_called_once()
+        finally:
+            # Restore real handlers so subsequent tests are not affected
+            real_logger.handlers.clear()
+            for h in original_handlers:
+                real_logger.addHandler(h)
     
     def test_logger_info_level(self):
         """Test that logger can log info messages."""

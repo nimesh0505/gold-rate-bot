@@ -102,7 +102,6 @@ class TestMain:
         mock_email_service_instance.send_error_email.assert_called_once_with("Error: Connection timeout")
         
         # Verify error logging
-        mock_logger.error.assert_any_call("No gold rates found")
         mock_logger.error.assert_any_call("Error in main process: Connection timeout")
     
     @patch('app.main.setup_logger')

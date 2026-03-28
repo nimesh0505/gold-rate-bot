@@ -29,8 +29,8 @@ class GoldRateScraper:
             text_content = soup.get_text()
             
             # Extract 22 KT and 24 KT gold prices using regex
-            rate_22k = self._extract_rate(text_content, r"22\s*KT\s*Gold\s*\|\s*₹(\d+)")
-            rate_24k = self._extract_rate(text_content, r"24\s*KT\s*Gold\s*\|\s*₹(\d+)")
+            rate_22k = self._extract_rate(text_content, r"22\s*KT\s*Gold\s*\|\s*₹\s*(\d+)")
+            rate_24k = self._extract_rate(text_content, r"24\s*KT\s*Gold\s*\|\s*₹\s*(\d+)")
             
             if rate_22k and rate_24k:
                 return {"22k": rate_22k, "24k": rate_24k}
