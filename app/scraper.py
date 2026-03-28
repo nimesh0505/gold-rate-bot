@@ -5,7 +5,7 @@ from typing import Dict, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gold_rate_bot")
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -30,7 +30,6 @@ class GoldRateScraper:
         ),
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br",
         "Connection": "keep-alive",
     }
 
@@ -52,28 +51,21 @@ class GoldRateScraper:
             logger.info(f"Response: status={response.status_code}, encoding={response.encoding}, "
                        f"content-type={response.headers.get('content-type', 'unknown')}")
             
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(response.text, "html.parser")
 
             # Find all text containing gold rate information
-            text_content = soup.get_text()
-            
-            # Log snippet around where we expect to find rates for debugging
-            self._log_rate_context(text_content)
+            text_content = self._normalize_text(soup.get_text(" ", strip=True))
 
-            # Real page format: "22 KT Gold₹13506 PER 1 GM" (no pipe separator)
-            pattern_22k = r"22\s*KT\s*Gold\s*₹\s*(\d+)"
-            pattern_24k = r"24\s*KT\s*Gold\s*₹\s*(\d+)"
-            
-            rate_22k = self._extract_rate(text_content, pattern_22k)
-            rate_24k = self._extract_rate(text_content, pattern_24k)
+            rate_22k = self._extract_karat_rate(text_content, 22)
+            rate_24k = self._extract_karat_rate(text_content, 24)
             
             logger.info(f"Extraction results: 22K={rate_22k}, 24K={rate_24k}")
             
             if rate_22k and rate_24k:
                 return {"22k": rate_22k, "24k": rate_24k}
             else:
-                logger.error(f"Regex patterns used: 22K='{pattern_22k}', 24K='{pattern_24k}'")
-                logger.error("Could not extract both gold rates — check log context above")
+                logger.error("Could not extract both gold rates")
+                self._log_rate_context(text_content)
                 return None
                 
         except requests.RequestException as e:
@@ -88,6 +80,25 @@ class GoldRateScraper:
         match = re.search(pattern, text, re.IGNORECASE)
         return match.group(1) if match else None
 
+    def _normalize_text(self, text: str) -> str:
+        """Normalize spacing and common unicode variants before regex extraction."""
+        normalized = text.replace("\xa0", " ").replace("\u2009", " ").replace("\u202f", " ")
+        return re.sub(r"\s+", " ", normalized).strip()
+
+    def _extract_karat_rate(self, text: str, karat: int) -> Optional[str]:
+        """Extract 22K/24K rates from flexible text patterns used by the website."""
+        patterns = [
+            # Common forms: "22 KT Gold₹13506", "24K Gold Rs 14600"
+            rf"{karat}\s*(?:K|KT)\s*GOLD\s*(?:₹|RS\.?|INR)?\s*[:\-]?\s*(\d{{4,7}})",
+            # Fallback when symbols are broken but number appears soon after label
+            rf"{karat}\s*(?:K|KT)\s*GOLD[^0-9]{{0,30}}(\d{{4,7}})",
+        ]
+        for pattern in patterns:
+            value = self._extract_rate(text, pattern)
+            if value:
+                return value
+        return None
+
     def _log_rate_context(self, text: str) -> None:
         """Log text snippet around gold rate mentions for debugging."""
         lines = [line.strip() for line in text.splitlines() if line.strip()]
@@ -99,12 +110,12 @@ class GoldRateScraper:
         ]
         
         if relevant_lines:
-            logger.info(f"Found {len(relevant_lines)} lines with gold/rate keywords")
+            logger.error(f"Found {len(relevant_lines)} lines with gold/rate keywords")
             # Log first 5 relevant lines to avoid flooding
             for i, line in enumerate(relevant_lines[:5]):
                 # Truncate long lines
                 display_line = line if len(line) <= 200 else line[:200] + "..."
-                logger.info(f"  Line {i+1}: {repr(display_line)}")
+                logger.error(f"  Line {i+1}: {repr(display_line)}")
         else:
-            logger.warning("No lines found containing gold rate keywords")
-            logger.warning(f"First 500 chars of page text: {repr(text[:500])}")
+            logger.error("No lines found containing gold rate keywords")
+            logger.error(f"First 500 chars of page text: {repr(text[:500])}")

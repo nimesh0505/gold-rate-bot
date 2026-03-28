@@ -92,11 +92,7 @@ class TestGoldRateScraper:
             result = self.scraper.fetch_gold_rates()
 
             assert result is None
-            # Verify error logging includes regex patterns
-            mock_logger.error.assert_any_call(
-                "Regex patterns used: 22K='22\\s*KT\\s*Gold\\s*₹\\s*(\\d+)', "
-                "24K='24\\s*KT\\s*Gold\\s*₹\\s*(\\d+)'"
-            )
+            mock_logger.error.assert_any_call("Could not extract both gold rates")
 
     @patch('app.scraper.requests.get')
     def test_fetch_gold_rates_no_data(self, mock_get):
@@ -168,6 +164,18 @@ class TestGoldRateScraper:
         result = self.scraper._extract_rate(text, pattern)
 
         assert result == "14903"
+
+    def test_extract_karat_rate_without_rupee_symbol(self):
+        """Test _extract_karat_rate when symbol is missing in CI output."""
+        text = "Updated On 2026 22 KT Gold 13506 PER 1 GM 24 KT Gold 14600 PER 1 GM"
+        assert self.scraper._extract_karat_rate(text, 22) == "13506"
+        assert self.scraper._extract_karat_rate(text, 24) == "14600"
+
+    def test_extract_karat_rate_with_k_not_kt(self):
+        """Test _extract_karat_rate supports K and KT variants."""
+        text = "Today 22K Gold Rs 14000 and 24K Gold Rs 15100"
+        assert self.scraper._extract_karat_rate(text, 22) == "14000"
+        assert self.scraper._extract_karat_rate(text, 24) == "15100"
 
     @patch('app.scraper.requests.get')
     def test_fetch_gold_rates_403_forbidden(self, mock_get):
@@ -254,7 +262,7 @@ class TestGoldRateScraper:
             # Should log count and sample lines
             assert any(
                 'Found' in str(call) and 'gold/rate keywords' in str(call)
-                for call in mock_logger.info.call_args_list
+                for call in mock_logger.error.call_args_list
             )
 
     def test_log_rate_context_without_gold_keywords(self):
@@ -265,11 +273,11 @@ class TestGoldRateScraper:
             self.scraper._log_rate_context(text)
 
             # Should warn and log first 500 chars
-            mock_logger.warning.assert_any_call(
+            mock_logger.error.assert_any_call(
                 "No lines found containing gold rate keywords"
             )
             # Should also log a snippet of the page
             assert any(
                 'First 500 chars' in str(call)
-                for call in mock_logger.warning.call_args_list
+                for call in mock_logger.error.call_args_list
             )
