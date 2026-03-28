@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-import smtplib
 from app.email_service import EmailService
 from app.config import Config
 
@@ -12,107 +11,94 @@ class TestEmailService:
         """Set up test fixtures."""
         # Create a mock config
         self.mock_config = Mock(spec=Config)
-        self.mock_config.EMAIL_USER = 'test@gmail.com'
-        self.mock_config.EMAIL_PASSWORD = 'app_password'
+        self.mock_config.MAILERSEND_API_TOKEN = 'test_api_token'
+        self.mock_config.EMAIL_FROM = 'info@domain.com'
+        self.mock_config.EMAIL_FROM_NAME = 'Gold Rate Bot'
         self.mock_config.EMAIL_TO = 'recipient@gmail.com'
+        self.mock_config.EMAIL_TO_NAME = 'Recipient'
         
         self.email_service = EmailService(self.mock_config)
     
-    @patch('app.email_service.smtplib.SMTP')
-    def test_send_success_email(self, mock_smtp):
+    @patch('app.email_service.EmailBuilder')
+    @patch('app.email_service.MailerSendClient')
+    def test_send_success_email(self, mock_client_cls, mock_email_builder_cls):
         """Test sending success email."""
-        # Mock SMTP server
-        mock_server = MagicMock()
-        mock_smtp.return_value = mock_server
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        self.email_service = EmailService(self.mock_config)
+
+        mock_builder = MagicMock()
+        mock_email_builder_cls.return_value = mock_builder
+        mock_builder.from_email.return_value = mock_builder
+        mock_builder.to_many.return_value = mock_builder
+        mock_builder.subject.return_value = mock_builder
+        mock_builder.html.return_value = mock_builder
+        mock_builder.text.return_value = mock_builder
+        mock_builder.build.return_value = {"mock": "email"}
         
         # Test method
         self.email_service.send_success_email('14903', '16110')
         
-        # Verify SMTP calls
-        mock_smtp.assert_called_once_with('smtp.gmail.com', 587)
-        mock_server.starttls.assert_called_once()
-        mock_server.login.assert_called_once_with('test@gmail.com', 'app_password')
-        mock_server.send_message.assert_called_once()
-        mock_server.quit.assert_called_once()
-        
-        # Verify email content
-        call_args = mock_server.send_message.call_args[0][0]
-        assert call_args['From'] == 'test@gmail.com'
-        assert call_args['To'] == 'recipient@gmail.com'
-        assert call_args['Subject'] == 'Daily Gold Rate'
-        assert '22K Gold: \u20b914903' in call_args.get_payload()
-        assert '24K Gold: \u20b916110' in call_args.get_payload()
+        # Verify MailerSend calls
+        mock_client_cls.assert_called_once_with(api_key='test_api_token')
+        mock_email_builder_cls.assert_called_once()
+        mock_builder.from_email.assert_called_once_with('info@domain.com', 'Gold Rate Bot')
+        mock_builder.to_many.assert_called_once_with([{"email": "recipient@gmail.com", "name": "Recipient"}])
+        mock_builder.subject.assert_called_once_with('Daily Gold Rate')
+        mock_builder.build.assert_called_once()
+        mock_client.emails.send.assert_called_once_with({"mock": "email"})
     
-    @patch('app.email_service.smtplib.SMTP')
-    def test_send_error_email(self, mock_smtp):
+    @patch('app.email_service.EmailBuilder')
+    @patch('app.email_service.MailerSendClient')
+    def test_send_error_email(self, mock_client_cls, mock_email_builder_cls):
         """Test sending error email."""
-        # Mock SMTP server
-        mock_server = MagicMock()
-        mock_smtp.return_value = mock_server
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        self.email_service = EmailService(self.mock_config)
+
+        mock_builder = MagicMock()
+        mock_email_builder_cls.return_value = mock_builder
+        mock_builder.from_email.return_value = mock_builder
+        mock_builder.to_many.return_value = mock_builder
+        mock_builder.subject.return_value = mock_builder
+        mock_builder.html.return_value = mock_builder
+        mock_builder.text.return_value = mock_builder
+        mock_builder.build.return_value = {"mock": "error_email"}
         
         # Test method
         self.email_service.send_error_email('Connection timeout')
         
-        # Verify SMTP calls
-        mock_smtp.assert_called_once_with('smtp.gmail.com', 587)
-        mock_server.starttls.assert_called_once()
-        mock_server.login.assert_called_once_with('test@gmail.com', 'app_password')
-        mock_server.send_message.assert_called_once()
-        mock_server.quit.assert_called_once()
-        
-        # Verify email content
-        call_args = mock_server.send_message.call_args[0][0]
-        assert call_args['From'] == 'test@gmail.com'
-        assert call_args['To'] == 'recipient@gmail.com'
-        assert call_args['Subject'] == 'Gold Rate Bot Alert'
-        assert 'Connection timeout' in call_args.get_payload()
+        # Verify MailerSend calls
+        mock_client_cls.assert_called_once_with(api_key='test_api_token')
+        mock_email_builder_cls.assert_called_once()
+        mock_builder.from_email.assert_called_once_with('info@domain.com', 'Gold Rate Bot')
+        mock_builder.to_many.assert_called_once_with([{"email": "recipient@gmail.com", "name": "Recipient"}])
+        mock_builder.subject.assert_called_once_with('Gold Rate Bot Alert')
+        mock_builder.build.assert_called_once()
+        mock_client.emails.send.assert_called_once_with({"mock": "error_email"})
     
-    @patch('app.email_service.smtplib.SMTP')
-    def test_smtp_exception_handling(self, mock_smtp):
-        """Test handling of SMTP exceptions."""
-        # Mock SMTP to raise exception
-        mock_smtp.side_effect = smtplib.SMTPException("SMTP connection failed")
+    @patch('app.email_service.EmailBuilder')
+    @patch('app.email_service.MailerSendClient')
+    def test_mailersend_exception_handling(self, mock_client_cls, mock_email_builder_cls):
+        """Test handling of MailerSend exceptions."""
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        self.email_service = EmailService(self.mock_config)
+
+        mock_builder = MagicMock()
+        mock_email_builder_cls.return_value = mock_builder
+        mock_builder.from_email.return_value = mock_builder
+        mock_builder.to_many.return_value = mock_builder
+        mock_builder.subject.return_value = mock_builder
+        mock_builder.html.return_value = mock_builder
+        mock_builder.text.return_value = mock_builder
+        mock_builder.build.return_value = {"mock": "email"}
+        mock_client.emails.send.side_effect = RuntimeError("MailerSend failed")
         
         # Test that exception is raised
-        with pytest.raises(smtplib.SMTPException, match="SMTP connection failed"):
+        with pytest.raises(RuntimeError, match="MailerSend failed"):
             self.email_service.send_success_email('14903', '16110')
-    
-    @patch('app.email_service.smtplib.SMTP')
-    def test_login_failure(self, mock_smtp):
-        """Test handling of login failure."""
-        # Mock SMTP server
-        mock_server = MagicMock()
-        mock_smtp.return_value = mock_server
-        
-        # Mock login to raise exception
-        mock_server.login.side_effect = smtplib.SMTPAuthenticationError(535, "Authentication failed")
-        
-        # Test that exception is raised
-        with pytest.raises(smtplib.SMTPAuthenticationError):
-            self.email_service.send_success_email('14903', '16110')
-        
-        # Verify cleanup
-        mock_server.quit.assert_called_once()
-    
-    @patch('app.email_service.smtplib.SMTP')
-    def test_send_message_failure(self, mock_smtp):
-        """Test handling of send_message failure."""
-        # Mock SMTP server
-        mock_server = MagicMock()
-        mock_smtp.return_value = mock_server
-        
-        # Mock send_message to raise exception
-        mock_server.send_message.side_effect = smtplib.SMTPException("Send failed")
-        
-        # Test that exception is raised
-        with pytest.raises(smtplib.SMTPException, match="Send failed"):
-            self.email_service.send_success_email('14903', '16110')
-        
-        # Verify cleanup
-        mock_server.quit.assert_called_once()
     
     def test_email_service_initialization(self):
         """Test EmailService initialization."""
         assert self.email_service.config == self.mock_config
-        assert self.email_service.smtp_server == 'smtp.gmail.com'
-        assert self.email_service.smtp_port == 587

@@ -2,6 +2,7 @@ requests
 beautifulsoup4
 tenacity
 python-dotenv
+mailersend
 pytest
 pytest-cov
 pytest-mock

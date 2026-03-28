@@ -10,39 +10,41 @@ class TestConfig:
     def test_config_initialization_success(self):
         """Test successful configuration initialization."""
         with patch.dict(os.environ, {
-            'EMAIL_USER': 'test@gmail.com',
-            'EMAIL_PASSWORD': 'app_password',
+            'MAILERSEND_API_TOKEN': 'test_api_token',
+            'EMAIL_FROM': 'info@domain.com',
             'EMAIL_TO': 'recipient@gmail.com'
         }):
             config = Config()
             
-            assert config.EMAIL_USER == 'test@gmail.com'
-            assert config.EMAIL_PASSWORD == 'app_password'
+            assert config.MAILERSEND_API_TOKEN == 'test_api_token'
+            assert config.EMAIL_FROM == 'info@domain.com'
             assert config.EMAIL_TO == 'recipient@gmail.com'
+            assert config.EMAIL_FROM_NAME == 'Gold Rate Bot'
+            assert config.EMAIL_TO_NAME == 'Recipient'
     
-    def test_config_missing_email_user(self):
-        """Test configuration when EMAIL_USER is missing."""
+    def test_config_missing_mailersend_token(self):
+        """Test configuration when MAILERSEND_API_TOKEN is missing."""
         with patch.dict(os.environ, {
-            'EMAIL_PASSWORD': 'app_password',
+            'EMAIL_FROM': 'info@domain.com',
             'EMAIL_TO': 'recipient@gmail.com'
         }, clear=True):
-            with pytest.raises(ValueError, match="Missing required environment variables: EMAIL_USER"):
+            with pytest.raises(ValueError, match="Missing required environment variables: MAILERSEND_API_TOKEN"):
                 Config()
     
-    def test_config_missing_email_password(self):
-        """Test configuration when EMAIL_PASSWORD is missing."""
+    def test_config_missing_email_from(self):
+        """Test configuration when EMAIL_FROM is missing."""
         with patch.dict(os.environ, {
-            'EMAIL_USER': 'test@gmail.com',
+            'MAILERSEND_API_TOKEN': 'test_api_token',
             'EMAIL_TO': 'recipient@gmail.com'
         }, clear=True):
-            with pytest.raises(ValueError, match="Missing required environment variables: EMAIL_PASSWORD"):
+            with pytest.raises(ValueError, match="Missing required environment variables: EMAIL_FROM"):
                 Config()
     
     def test_config_missing_email_to(self):
         """Test configuration when EMAIL_TO is missing."""
         with patch.dict(os.environ, {
-            'EMAIL_USER': 'test@gmail.com',
-            'EMAIL_PASSWORD': 'app_password'
+            'MAILERSEND_API_TOKEN': 'test_api_token',
+            'EMAIL_FROM': 'info@domain.com'
         }, clear=True):
             with pytest.raises(ValueError, match="Missing required environment variables: EMAIL_TO"):
                 Config()
@@ -50,17 +52,17 @@ class TestConfig:
     def test_config_multiple_missing_variables(self):
         """Test configuration when multiple variables are missing."""
         with patch.dict(os.environ, {
-            'EMAIL_USER': 'test@gmail.com'
+            'MAILERSEND_API_TOKEN': 'test_api_token'
         }, clear=True):
-            with pytest.raises(ValueError, match="Missing required environment variables: EMAIL_PASSWORD, EMAIL_TO"):
+            with pytest.raises(ValueError, match="Missing required environment variables: EMAIL_FROM, EMAIL_TO"):
                 Config()
     
     def test_config_empty_string_values(self):
         """Test configuration when environment variables are empty strings."""
         with patch.dict(os.environ, {
-            'EMAIL_USER': '',
-            'EMAIL_PASSWORD': 'app_password',
+            'MAILERSEND_API_TOKEN': '',
+            'EMAIL_FROM': 'info@domain.com',
             'EMAIL_TO': 'recipient@gmail.com'
         }, clear=True):
-            with pytest.raises(ValueError, match="Missing required environment variables: EMAIL_USER"):
+            with pytest.raises(ValueError, match="Missing required environment variables: MAILERSEND_API_TOKEN"):
                 Config()

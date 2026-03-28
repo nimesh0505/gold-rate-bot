@@ -1,8 +1,5 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from typing import Optional
 import logging
+from mailersend import MailerSendClient, EmailBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -11,8 +8,7 @@ class EmailService:
     
     def __init__(self, config):
         self.config = config
-        self.smtp_server = "smtp.gmail.com"
-        self.smtp_port = 587
+        self.client = MailerSendClient(api_key=self.config.MAILERSEND_API_TOKEN)
     
     def send_success_email(self, rate_22k: str, rate_24k: str) -> None:
         """Send email with successful gold rate fetch."""
@@ -40,21 +36,19 @@ https://chandukakasaraf.in/todays-gold-rate/
         self._send_email(subject, body)
     
     def _send_email(self, subject: str, body: str) -> None:
-        """Send email using Gmail SMTP."""
+        """Send email using MailerSend."""
         try:
-            msg = MIMEMultipart()
-            msg['From'] = self.config.EMAIL_USER
-            msg['To'] = self.config.EMAIL_TO
-            msg['Subject'] = subject
-            
-            msg.attach(MIMEText(body, 'plain'))
-            
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            server.starttls()
-            server.login(self.config.EMAIL_USER, self.config.EMAIL_PASSWORD)
-            server.send_message(msg)
-            server.quit()
-            
+            email = (
+                EmailBuilder()
+                .from_email(self.config.EMAIL_FROM, self.config.EMAIL_FROM_NAME)
+                .to_many([{"email": self.config.EMAIL_TO, "name": self.config.EMAIL_TO_NAME}])
+                .subject(subject)
+                .html(body.replace("\n", "<br/>"))
+                .text(body)
+                .build()
+            )
+
+            self.client.emails.send(email)
             logger.info("Email sent successfully")
             
         except Exception as e:

@@ -5,7 +5,7 @@ A production-ready Python bot that scrapes daily gold rates from chandukakasaraf
 ## Features
 
 - **Retry-safe scraping** with exponential backoff (3 attempts)
-- **Email alerts** for success and failure cases via Gmail SMTP
+- **Email alerts** for success and failure cases via MailerSend
 - **Docker support** for easy containerized deployment
 - **GitHub Actions scheduler** running daily at 4:00 AM UTC
 - **Structured logging** with timestamps and log levels
@@ -22,7 +22,7 @@ gold-rate-bot/
 │   ├── __init__.py              # Package initialization
 │   ├── main.py                  # Main application entry point
 │   ├── scraper.py               # Web scraping logic with retry
-│   ├── email_service.py         # Gmail SMTP email service
+│   ├── email_service.py         # MailerSend email service
 │   ├── config.py                # Environment configuration
 │   └── logger.py                # Structured logging setup
 ├── tests/                        # Comprehensive test suite
@@ -49,7 +49,7 @@ gold-rate-bot/
 ### Prerequisites
 
 - Python 3.11+
-- Gmail account with 2-factor authentication
+- MailerSend account with a verified sender domain
 - Docker (optional, for containerized deployment)
 
 ### 1. Clone and Setup
@@ -79,11 +79,13 @@ cp .env.example .env
 nano .env  # or use your preferred editor
 ```
 
-Add your Gmail credentials:
+Add your MailerSend credentials:
 ```env
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASSWORD=your_gmail_app_password
-EMAIL_TO=recipient_email@gmail.com
+MAILERSEND_API_TOKEN=your_mailersend_api_token
+EMAIL_FROM=info@domain.com
+EMAIL_TO=recipient@domain.com
+EMAIL_FROM_NAME=Gold Rate Bot
+EMAIL_TO_NAME=Recipient
 ```
 
 ### 4. Run the Bot
@@ -130,28 +132,18 @@ Run with:
 docker-compose up -d
 ```
 
-## Gmail App Password Setup
+## MailerSend Setup
 
-**Important**: You cannot use your regular Gmail password. You must generate an App Password.
-
-### Step-by-Step Instructions:
-
-1. **Enable 2-Factor Authentication**
-   - Go to [Google Account settings](https://myaccount.google.com/security)
-   - Enable 2-Step Verification
-
-2. **Generate App Password**
-   - Go to [App Passwords](https://myaccount.google.com/apppasswords)
-   - Select "Mail" for the app
-   - Select "Other (Custom name)" and enter "Gold Rate Bot"
-   - Click "Generate"
-   - Copy the 16-character password (no spaces)
-
-3. **Update Environment**
+1. Create a MailerSend account and verify a sender domain.
+2. Generate an API token with permission to send emails.
+3. Use a sender address from your verified domain.
+4. Update your `.env` file with:
    ```env
-   EMAIL_USER=your_email@gmail.com
-   EMAIL_PASSWORD=xxxx xxxx xxxx xxxx  # Use the generated app password
-   EMAIL_TO=recipient@gmail.com
+   MAILERSEND_API_TOKEN=your_mailersend_api_token
+   EMAIL_FROM=info@domain.com
+   EMAIL_TO=recipient@domain.com
+   EMAIL_FROM_NAME=Gold Rate Bot
+   EMAIL_TO_NAME=Recipient
    ```
 
 ## Testing
@@ -226,9 +218,11 @@ Add the following secrets:
 
 | Secret Name | Description | Example |
 |-------------|-------------|---------|
-| `EMAIL_USER` | Your Gmail address | `your_email@gmail.com` |
-| `EMAIL_PASSWORD` | Gmail app password | `xxxx xxxx xxxx xxxx` |
+| `MAILERSEND_API_TOKEN` | MailerSend API token | `ms_...` |
+| `EMAIL_FROM` | Verified sender address | `info@domain.com` |
 | `EMAIL_TO` | Recipient email address | `recipient@gmail.com` |
+| `EMAIL_FROM_NAME` | Sender display name | `Gold Rate Bot` |
+| `EMAIL_TO_NAME` | Recipient display name | `Recipient` |
 
 ### Setting Up Secrets:
 
@@ -328,7 +322,7 @@ The scraper implements robust retry logic:
 
 - **Network Timeouts**: Automatic retry with longer timeouts
 - **Parsing Failures**: Email alerts with error details
-- **SMTP Failures**: Detailed logging and error reporting
+- **Email Provider Failures**: Detailed logging and error reporting
 - **Configuration Issues**: Clear validation messages
 
 ## Deployment Options
@@ -361,12 +355,12 @@ The scraper implements robust retry logic:
 
 ### Common Issues
 
-#### 1. Gmail Authentication Failed
-**Problem**: `SMTPAuthenticationError`
+#### 1. MailerSend Authentication Failed
+**Problem**: API authentication or authorization error
 **Solution**: 
-- Enable 2-factor authentication
-- Generate new App Password
-- Check EMAIL_USER and EMAIL_PASSWORD
+- Verify `MAILERSEND_API_TOKEN`
+- Confirm your sender domain and `EMAIL_FROM` are verified
+- Check token permissions in MailerSend dashboard
 
 #### 2. No Gold Rates Found
 **Problem**: `No gold rates found on the page`
