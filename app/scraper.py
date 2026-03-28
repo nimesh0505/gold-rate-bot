@@ -49,14 +49,14 @@ class GoldRateScraper:
                 raise requests.HTTPError("403 Forbidden", response=response)
             response.raise_for_status()
             
-            soup = BeautifulSoup(response.content, 'html.parser')
-            
+            soup = BeautifulSoup(response.text, 'html.parser')
+
             # Find all text containing gold rate information
             text_content = soup.get_text()
-            
-            # Extract 22 KT and 24 KT gold prices using regex
-            rate_22k = self._extract_rate(text_content, r"22\s*KT\s*Gold\s*\|\s*₹\s*(\d+)")
-            rate_24k = self._extract_rate(text_content, r"24\s*KT\s*Gold\s*\|\s*₹\s*(\d+)")
+
+            # Real page format: "22 KT Gold₹13506 PER 1 GM" (no pipe separator)
+            rate_22k = self._extract_rate(text_content, r"22\s*KT\s*Gold\s*₹\s*(\d+)")
+            rate_24k = self._extract_rate(text_content, r"24\s*KT\s*Gold\s*₹\s*(\d+)")
             
             if rate_22k and rate_24k:
                 return {"22k": rate_22k, "24k": rate_24k}
